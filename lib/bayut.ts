@@ -13,8 +13,6 @@ function parseRooms(beds: number): string { return beds === 0 ? 'Studio' : beds 
 function extractArea(location: Array<{level: number; name: string}> | undefined): string {
   if (!location || location.length === 0) return 'Dubai'
   // Level 2 = district (e.g. "Jumeirah Village Circle (JVC)", "Arjan", "Business Bay")
-  // Level 1 = city ("Dubai")
-  // We want level 2, and clean up parenthetical abbreviations
   const lvl2 = location.find(l => l.level === 2)
   const best = lvl2 ?? location.find(l => l.level === 1) ?? location[location.length - 1]
   // Remove parenthetical abbreviations: "Jumeirah Village Circle (JVC)" -> "Jumeirah Village Circle"
@@ -49,8 +47,10 @@ export async function fetchBayutListings(opts: { rapidApiKey: string; pageSize?:
     const sizeSqft = Math.round(Number(h.area ?? 0) * 10.764)
     const price = Number(h.price ?? 0)
     const area = extractArea(h.location)
-    const slug = (h.slug?.en ?? '').replace('details_', 'details-')
-    const url = slug ? 'https://www.bayut.com/property/' + slug + '.html' : 'https://www.bayut.com'
+    // Slug: "details_14182453" -> URL: "details-14182453.html"
+    const rawSlug: string = h.slug?.en ?? String(h.externalID ?? h.id ?? '')
+    const urlId = rawSlug.replace('details_', '')
+    const url = 'https://www.bayut.com/property/details-' + urlId + '.html'
     return {
       id: String(h.externalID ?? h.id ?? Math.random()),
       title: h.title?.en ?? String(h.title ?? ''),
