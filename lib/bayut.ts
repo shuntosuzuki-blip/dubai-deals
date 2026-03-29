@@ -1,7 +1,4 @@
-// lib/bayut.ts
-// bayut14 API (happyendpoint) via RapidAPI
-// Uses correct locationExternalIDs matching DLD area names
-
+// lib/bayut.ts - bayut14 API (happyendpoint via RapidAPI)
 export interface BayutListing {
   id: string; title: string; url: string; area: string; rooms: string; beds: number
   sizeSqft: number; askPrice: number; yieldPct: number; domDays: number; view: string
@@ -11,85 +8,58 @@ export interface BayutListing {
 const HOST = 'bayut14.p.rapidapi.com'
 const BASE = 'https://' + HOST
 
-// Bayut externalIDs matching DLD area names exactly
-const DLD_AREAS: Record<string, string> = {
-  '5003':  'Dubai Marina',
-  '5093':  'Business Bay',
-  '5416':  'Jumeirah Village Circle',
-  '6901':  'Downtown Dubai',
-  '5374':  'DIFC',
-  '8288':  'Dubai Hills Estate',
-}
+function parseRooms(beds: number): string { return beds === 0 ? 'Studio' : beds + 'BR' }
 
-function parseRooms(beds: number): string {
-  return beds === 0 ? 'Studio' : beds + 'BR'
+function extractArea(location: Array<{level: number; name: string}> | undefined): string {
+  if (!location || location.length === 0) return 'Dubai'
+  // Level 2 = district (e.g. "Jumeirah Village Circle (JVC)", "Arjan", "Business Bay")
+  // Level 1 = city ("Dubai")
+  // We want level 2, and clean up parenthetical abbreviations
+  const lvl2 = location.find(l => l.level === 2)
+  const best = lvl2 ?? location.find(l => l.level === 1) ?? location[location.length - 1]
+  // Remove parenthetical abbreviations: "Jumeirah Village Circle (JVC)" -> "Jumeirah Village Circle"
+  return (best?.name ?? 'Dubai').replace(/\s*\([^)]+\)$/g, '').trim()
 }
 
 export async function fetchBayutListings(opts: { rapidApiKey: string; pageSize?: number }): Promise<BayutListing[]> {
   const { rapidApiKey, pageSize = 50 } = opts
-
-  const locationIds = Object.keys(DLD_AREAS).join(',')
   const params = new URLSearchParams({
     purpose: 'for-sale',
-    locationExternalIDs: locationIds,
+    locationExternalIDs: '5002,5001,11764,6020,5006,56024',
     lang: 'en',
-    hitsPerPage: '50',
+    hitsPerPage: String(Math.min(pageSize, 50)),
     page: '1',
     categoryExternalID: '4',
     sort: 'price_asc',
   })
-
-  const url = BASE + '/search-property?' + params.toString()
-  const res = await fetch(url, {
+  const res = await fetch(BASE + '/search-property?' + params, {
     headers: { 'x-rapidapi-key': rapidApiKey, 'x-rapidapi-host': HOST },
     signal: AbortSignal.timeout(12000),
   })
-  if (!res.ok) {
-    const text = await res.text()
-    throw new Error('Bayut14 ' + res.status + ': ' + text.slice(0, 200))
-  }
+  if (!res.ok) throw new Error('Bayut14 ' + res.status + ': ' + (await res.text()).slice(0, 100))
   const json = await res.json()
-  if (!json.success) throw new Error('Bayut14: ' + JSON.stringify(json.error ?? json).slice(0, 100))
-
+  if (!json.success) throw new Error('Bayut14: ' + JSON.stringify(json.error ?? '').slice(0, 100))
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const hits: any[] = json?.data?.properties ?? []
-  if (hits.length === 0) throw new Error('No properties returned from Bayut14')
+  if (hits.length === 0) throw new Error('No properties returned')
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return hits.map((h: any) => {
     const beds = Number(h.rooms ?? 0)
-    const sizeSqm = Number(h.area ?? 0)
-    const sizeSqft = Math.round(sizeSqm * 10.764)
+    const sizeSqft = Math.round(Number(h.area ?? 0) * 10.764)
     const price = Number(h.price ?? 0)
-
-    // Map location back to DLD area name using externalID
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const loc: any[] = h.location ?? []
-    let areaName = 'Dubai'
-    for (const l of loc) {
-      const mapped = DLD_AREAS[String(l.externalID)]
-      if (mapped) { areaName = mapped; break }
-    }
-
-    const rawSlug = h.slug?.en ?? ''
-    const slug = rawSlug.replace('details_', 'details-') || ('details-' + String(h.externalID ?? h.id ?? ''))
-    const listingUrl = 'https://www.bayut.com/property/' + slug + '.html'
-
+    const area = extractArea(h.location)
+    const slug = (h.slug?.en ?? '').replace('details_', 'details-')
+    const url = slug ? 'https://www.bayut.com/property/' + slug + '.html' : 'https://www.bayut.com'
     return {
       id: String(h.externalID ?? h.id ?? Math.random()),
       title: h.title?.en ?? String(h.title ?? ''),
-      url: listingUrl,
-      area: areaName,
-      rooms: parseRooms(beds),
-      beds,
-      sizeSqft,
-      askPrice: price,
-      yieldPct: 0,   // calculated by score.ts from price/size
-      domDays: 0,
-      view: '',
+      url, area,
+      rooms: parseRooms(beds), beds, sizeSqft, askPrice: price,
+      yieldPct: 0, domDays: 0, view: '',
       source: 'Bayut' as const,
       imageUrl: '',
-      agentName: String(h.contactName ?? ''),
+      agentName: String(h.agency?.name ?? ''),
       permitNumber: String(h.permitNumber ?? ''),
     }
   }).filter((l: BayutListing) => l.askPrice > 100000 && l.sizeSqft > 50 && l.title.length > 0)
