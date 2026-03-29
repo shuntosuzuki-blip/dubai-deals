@@ -1,6 +1,5 @@
 // lib/bayut.ts
-// Uses Bayut's native search API (the same one their website uses)
-// No RapidAPI key needed - but RAPIDAPI_KEY env var presence still triggers live mode
+// Bayut listing data via Algolia search (same backend Bayut.com uses)
 
 export interface BayutListing {
   id: string; title: string; url: string; area: string; rooms: string; beds: number
@@ -8,73 +7,82 @@ export interface BayutListing {
   source: 'Bayut'; imageUrl: string; agentName: string; permitNumber: string
 }
 
-// Dubai area location IDs on bayut.com
-const LOCATION_IDS: Record<string, number> = {
-  'Dubai Marina': 5001,
-  'Downtown Dubai': 5002,
-  'Jumeirah Village Circle': 11764,
-  'Business Bay': 6020,
-  'Palm Jumeirah': 5019,
-  'DIFC': 5006,
-  'Dubai Hills Estate': 56024,
+const ALGOLIA_APP = 'LL8IZ711CS'
+const ALGOLIA_KEY = 'strat_a5e4568c'
+const ALGOLIA_INDEX = 'bayut-production-ads-bi-score-ranking-en'
+const ALGOLIA_URL = 'https://LL8IZ711CS-dsn.algolia.net/1/indexes/' + ALGOLIA_INDEX + '/query'
+
+// Area filter IDs for Bayut Algolia
+const AREA_FILTERS = [
+  'location.externalIDs:5002',  // Downtown Dubai
+  'location.externalIDs:5001',  // Dubai Marina
+  'location.externalIDs:11764', // JVC
+  'location.externalIDs:6020',  // Business Bay
+  'location.externalIDs:5006',  // DIFC
+].join(' OR ')
+
+function parseRooms(beds: number): string {
+  return beds === 0 ? 'Studio' : beds + 'BR'
 }
 
-function parseRoom(beds: number): string {
-  if (beds === 0) return 'Studio'
-  return beds + 'BR'
-}
-
-async function fetchLocation(locationId: number, purpose = 'for-sale'): Promise<BayutListing[]> {
-  const params = new URLSearchParams({
-    purpose, categoryExternalID: '4', locationExternalIDs: String(locationId),
-    hitsPerPage: '25', page: '0', lang: 'en', sort: 'date_desc',
-  })
-  const url = 'https://www.bayut.com/api/properties/list/?' + params.toString()
-  const res = await fetch(url, {
+async function algoliaSearch(filters: string, page = 0): Promise<BayutListing[]> {
+  const body = {
+    query: '',
+    filters: `purpose:"for-sale" AND category.externalID:4 AND (${filters})`,
+    hitsPerPage: 50,
+    page,
+    attributesToRetrieve: [
+      'externalID','title','price','rooms','area','coverPhoto','slug',
+      'location','size','agency','permitNumber','baths',
+    ],
+  }
+  const res = await fetch(ALGOLIA_URL, {
+    method: 'POST',
     headers: {
-      'Accept': 'application/json',
-      'User-Agent': 'Mozilla/5.0 (compatible; DubaiDeals/1.0)',
-      'Referer': 'https://www.bayut.com/',
+      'X-Algolia-Application-Id': ALGOLIA_APP,
+      'X-Algolia-API-Key': ALGOLIA_KEY,
+      'Content-Type': 'application/json',
     },
-    signal: AbortSignal.timeout(8000),
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(10000),
   })
-  if (!res.ok) throw new Error('Bayut API ' + res.status)
+  if (!res.ok) throw new Error('Algolia ' + res.status + ': ' + await res.text())
   const json = await res.json()
-  const hits = json?.hits ?? json?.results ?? []
-  const areaName = Object.entries(LOCATION_IDS).find(([, id]) => id === locationId)?.[0] ?? 'Dubai'
-  return hits.map((h: Record<string, unknown>) => {
-    const beds = Number(h.rooms ?? h.beds ?? 0)
-    const size = Number(h.area ?? h.size ?? 0)
-    const price = Number(h.price ?? h.priceAED ?? 0)
-    const photos = (h.coverPhoto ?? (h.photos as Record<string,unknown>[])?.[0]) as Record<string,unknown>
-    const imageUrl = String(photos?.url ?? photos?.thumbnail ?? '')
-    const id = String(h.externalID ?? h.id ?? Math.random())
-    const slug = String(h.slug ?? h.externalID ?? id)
+  if (json.message) throw new Error('Algolia error: ' + json.message)
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (json.hits ?? []).map((h: any) => {
+    const beds = Number(h.rooms ?? 0)
+    const sizeSqm = Number(h.size ?? 0)
+    const sizeSqft = Math.round(sizeSqm * 10.764)
+    const price = Number(h.price ?? 0)
+    const areaName = h.location?.find((l: {level: number; name: string}) => l.level === 3)?.name
+      ?? h.location?.[h.location.length - 1]?.name ?? 'Dubai'
+    const cover = h.coverPhoto as {url?: string; thumbnail?: string} | undefined
+    const imageUrl = cover?.url ?? cover?.thumbnail ?? ''
+    const slug = String(h.slug ?? h.externalID ?? '')
     return {
-      id, title: String(h.title ?? h.name ?? ''),
+      id: String(h.externalID ?? Math.random()),
+      title: String(h.title ?? ''),
       url: 'https://www.bayut.com/property/details-' + slug + '.html',
-      area: areaName, rooms: parseRoom(beds), beds,
-      sizeSqft: Math.round(size * 10.764), // m2 to sqft
+      area: areaName,
+      rooms: parseRooms(beds),
+      beds,
+      sizeSqft,
       askPrice: price,
-      yieldPct: 0, // calculated later
+      yieldPct: 0,
       domDays: 0,
       view: '',
       source: 'Bayut' as const,
       imageUrl,
-      agentName: String((h.agency as Record<string,unknown>)?.name ?? ''),
+      agentName: String((h.agency as {name?: string})?.name ?? ''),
       permitNumber: String(h.permitNumber ?? ''),
     }
-  }).filter((l: BayutListing) => l.askPrice > 0 && l.sizeSqft > 0)
+  }).filter((l: BayutListing) => l.askPrice > 100000 && l.sizeSqft > 100)
 }
 
 export async function fetchBayutListings(opts: { rapidApiKey: string; pageSize?: number }): Promise<BayutListing[]> {
-  // Fetch from top areas in parallel
-  const locationIds = Object.values(LOCATION_IDS).slice(0, 5)
-  const results = await Promise.allSettled(locationIds.map(id => fetchLocation(id)))
-  const all: BayutListing[] = []
-  for (const r of results) {
-    if (r.status === 'fulfilled') all.push(...r.value)
-  }
-  if (all.length === 0) throw new Error('No listings from Bayut')
-  return all.slice(0, opts.pageSize ?? 100)
+  const listings = await algoliaSearch(AREA_FILTERS, 0)
+  if (listings.length === 0) throw new Error('No listings from Algolia')
+  return listings.slice(0, opts.pageSize ?? 100)
 }
