@@ -1,6 +1,5 @@
 // lib/i18n.ts
 export type Locale = 'en' | 'ja'
-
 export const TRANSLATIONS = {
   en: {
     tagline: 'Below-market property radar - powered by DLD transaction data',
@@ -15,8 +14,7 @@ export const TRANSLATIONS = {
     recentSales: 'Recent sales', undervalue: 'Undervalue',
     yield_: 'Yield', dom: 'Days listed', txns: 'Sales',
     newHot: 'New + cheap', longListed: 'Long listed', aiBtn: 'AI analysis >',
-    submitBtn: '+ Submit listing',
-    submitTitle_: 'Submit a deal',
+    submitBtn: '+ Submit listing', submitTitle_: 'Submit a deal',
     submitSub: 'Found a bargain? Share it with the community.',
     fName: 'Property name', fArea: 'Area', fUrl: 'Bayut / PF URL',
     fPrice: 'Asking price (AED)', fSize: 'Size (sqft)', fYield: 'Est. yield (%)',
@@ -31,32 +29,31 @@ export const TRANSLATIONS = {
     noApiKey: 'Set RAPIDAPI_KEY in Vercel environment variables to enable live Bayut listings.',
   },
   ja: {
-    tagline: 'DLDデータで割安件を検索',
+    tagline: 'DLD取引データで割安件を検索',
     live: 'ライブ', loading: '取得中...', err: 'エラー', refresh: '更新',
     updated: '最終更新', count: '件数', gradeA: 'Aグレード',
     avgDisc: '平均割引率', topYield: '最高利回り', saved: 'お気に入り',
     allGrades: '全グレード', allAreas: '全エリア', allTypes: '全種類',
     studio: 'Studio', minDisc: '最小割引',
     sortDisc: '割引率', sortYield: '利回り', sortPrice: '価格', sortTxn: '成約',
-    noResults: '該当件数なし',
-    askPsf: '売出', mktPsf: '市場', disc: '割引率', noData: 'DLDデータなし',
+    noResults: '該当件なし',
+    askPsf: '売出', mktPsf: '市場', disc: '割引', noData: 'DLDデータなし',
     recentSales: '近近成約', undervalue: '割安',
     yield_: '利回り', dom: '公开日数', txns: '成約件数',
     newHot: '新着+割安', longListed: '長期未展示', aiBtn: 'AI分析 >',
-    submitBtn: '+ 投稿',
-    submitTitle_: '件数を投稿',
+    submitBtn: '+ 投稿', submitTitle_: '件数を投稿',
     submitSub: 'お得な件数をコミュニティに投稿',
-    fName: '件名', fArea: 'エリア', fUrl: 'Bayut / PF URL',
-    fPrice: '売出価格 (AED)', fSize: '面積 (sqft)', fYield: '利回り (%)',
+    fName: '件名', fArea: 'エリア', fUrl: 'Bayut/PF URL',
+    fPrice: '売出価格(AED)', fSize: '面積(sqft)', fYield: '利回り(%)',
     fDom: '公開日数', fRooms: '種類', fSubmit: '投稿',
     submitThanks: 'ありがとうございます！',
     aiTitle: 'AI分析', aiSub: 'DLDデータ元にAI分析',
-    aiPlaceholder: '例：マリーナの割安件は？',
+    aiPlaceholder: '例: マリーナの割安件は？',
     analyze: '分析', analyzing: '分析中...',
     aiChips: ['グレードAの最高利回り？', 'マリーナの最大割引？', '100万AED以下？', '長期割安？'],
     dldNote: '成約データ: DLD Open Data API - 無料 - 毎週更新',
-    disclaimer: '当サイトはBayut・Property Finder・DLDとは無居です。',
-    noApiKey: 'RAPIDAPI_KEYを Vercel 環境変数に設定してください。',
+    disclaimer: '当サイトはBayut/Property Finder/DLDと無居です。',
+    noApiKey: 'RAPIDAPI_KEYをVercel環境変数に設定してください。',
   },
 } as const
 export type TX = typeof TRANSLATIONS['en']
