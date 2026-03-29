@@ -78,7 +78,7 @@ export async function fetchBayutListings(opts: { rapidApiKey: string; pageSize?:
     locationExternalIDs: '5002,5001,11764,6020,5006', // Downtown, Marina, JVC, Business Bay, DIFC
     lang: 'en',
     hitsPerPage: String(Math.min(pageSize, 50)),
-    page: '0',
+    page: '1',
     sort: 'date_desc',
     categoryExternalID: '4', // apartments
   }
