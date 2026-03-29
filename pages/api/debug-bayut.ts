@@ -2,26 +2,17 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const ALGOLIA_APP = 'LL8IZ711CS'
-  const ALGOLIA_KEY = 'strat_a5e4568c'
-  const ALGOLIA_INDEX = 'bayut-production-ads-bi-score-ranking-en'
-  const url = 'https://' + ALGOLIA_APP + '-dsn.algolia.net/1/indexes/' + ALGOLIA_INDEX + '/query'
+  const key = process.env.RAPIDAPI_KEY ?? ''
+  const host = 'bayut14.p.rapidapi.com'
+  const url = 'https://' + host + '/search-property?purpose=for-sale&locationExternalIDs=5002&lang=en&hitsPerPage=2&page=0&categoryExternalID=4'
   try {
     const r = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'X-Algolia-Application-Id': ALGOLIA_APP,
-        'X-Algolia-API-Key': ALGOLIA_KEY,
-        'Content-Type': 'application/json',
-        'Referer': 'https://www.bayut.com/',
-        'Origin': 'https://www.bayut.com',
-        'User-Agent': 'Mozilla/5.0 (compatible)',
-      },
-      body: JSON.stringify({ query: '', filters: 'purpose:"for-sale" AND category.externalID:4', hitsPerPage: 2 }),
+      headers: { 'x-rapidapi-key': key, 'x-rapidapi-host': host },
+      signal: AbortSignal.timeout(10000),
     })
     const text = await r.text()
-    return res.status(200).json({ algoliaStatus: r.status, preview: text.slice(0, 500) })
+    return res.status(200).json({ status: r.status, hasKey: !!key, keyPrefix: key.slice(0,8), preview: text.slice(0, 600) })
   } catch(e) {
-    return res.status(200).json({ error: String(e) })
+    return res.status(200).json({ error: String(e), hasKey: !!key })
   }
 }
