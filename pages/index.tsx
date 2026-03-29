@@ -86,12 +86,12 @@ export default function Home() {
           <p style={{ fontSize: 11, color: 'var(--ink3)', marginTop: 2 }}>{tx.tagline}</p>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <Link href="/market" style={{ ...fltSt, textDecoration: 'none' }}>{locale === 'ja' ? 'トレンド' : 'Trends'}</Link>
+          <Link href="/market" style={{ ...fltSt, textDecoration: 'none' }}>{locale === 'ja' ? '\u30c8\u30ec\u30f3\u30c9' : 'Trends'}</Link>
           <button onClick={() => load(true)} style={{ ...fltSt, cursor: 'pointer' }}>{tx.refresh}</button>
         </div>
       </header>
 
-      {usingSeed && !loading && <div style={{ padding: '.5rem 1.5rem', background: '#FAEEDA', fontSize: 11, color: '#854F0B' }}>Demo data — {tx.noApiKey}</div>}
+      {usingSeed && !loading && <div style={{ padding: '.5rem 1.5rem', background: '#FAEEDA', fontSize: 11, color: '#854F0B' }}>Demo data \u2014 {tx.noApiKey}</div>}
 
       <div style={{ background: 'var(--surf)', padding: '.7rem 1.5rem', borderBottom: '1px solid var(--line)', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
         <div style={{ display: 'flex', border: '1px solid var(--line2)', borderRadius: 6, overflow: 'hidden' }}>
@@ -124,7 +124,7 @@ export default function Home() {
             <article key={p.id} style={{ background: 'var(--surf)', padding: '1.1rem 1.2rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
                 <div style={{ width: 30, height: 30, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 500, background: GRADE_BG[p.grade], color: GRADE_COLOR[p.grade] }}>{p.grade}</div>
-                <button onClick={() => toggleFav(p.id)} style={{ background: 'none', border: 'none', fontSize: 17, lineHeight: 1, padding: 0, color: favs.has(p.id) ? '#D85A30' : 'var(--line2)', cursor: 'pointer' }}>{favs.has(p.id) ? '★' : '☆'}</button>
+                <button onClick={() => toggleFav(p.id)} style={{ background: 'none', border: 'none', fontSize: 17, lineHeight: 1, padding: 0, color: favs.has(p.id) ? '#D85A30' : 'var(--line2)', cursor: 'pointer' }}>{favs.has(p.id) ? '\u2605' : '\u2606'}</button>
               </div>
               <h2 style={{ fontFamily: 'Fraunces,serif', fontSize: '.95rem', fontWeight: 300, marginBottom: 5, lineHeight: 1.3 }}>
                 <a href={p.url} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>{p.title}</a>
