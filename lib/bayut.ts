@@ -54,13 +54,14 @@ export async function fetchBayutListings(opts: { rapidApiKey: string; pageSize?:
     // Location: array ordered by level, level 3 = district, level 4 = subdistrict
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const loc = (h.location as any[]) ?? []
-    const district = loc.find(l => l.level === 3) ?? loc.find(l => l.level === 2) ?? loc[loc.length - 1]
+    const district = loc.find(l => l.level === 2) ?? loc.find(l => l.level === 3) ?? loc[loc.length - 1]
     const areaName = district?.name ?? 'Dubai'
 
     // Cover photo: just the externalID, real URL needs separate call — use empty for now
     const imageUrl = ''
 
-    const slug = h.slug?.en ?? h.slug ?? String(h.externalID ?? h.id ?? '')
+    const rawSlug = h.slug?.en ?? h.slug ?? ''
+    const slug = rawSlug.replace('details_', 'details-') || ('details-' + String(h.externalID ?? h.id ?? ''))
     const listingUrl = 'https://www.bayut.com/property/' + slug + '.html'
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
