@@ -11,7 +11,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const key = process.env.ANTHROPIC_API_KEY
   if (!key) return res.status(200).json({
     answer: locale === 'ja'
-      ? 'AI分析を有効にするには ANTHROPIC_API_KEY を Vercel 環境変数に設定してください。'
+      ? 'AI\u5206\u6790\u3092\u6709\u52b9\u306b\u3059\u308b\u306b\u306f ANTHROPIC_API_KEY \u3092 Vercel \u74b0\u5883\u5909\u6570\u306b\u8a2d\u5b9a\u3057\u3066\u304f\u3060\u3055\u3044\u3002'
       : 'Set ANTHROPIC_API_KEY in Vercel environment variables to enable AI analysis.',
   })
   const ctx = listings.slice(0, 20).map(p =>
