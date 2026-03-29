@@ -1,3 +1,4 @@
+// pages/market.tsx
 import { useEffect, useState, useRef, useCallback } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
@@ -37,8 +38,7 @@ function TrendChart({ trends, area, rooms }: { trends: AreaTrend[]; area: string
     const datasets = series.map((s, i) => ({
       label: s.area,
       data: allMonths.map(m => { const pt = s.trend.find(p => p.month === m); return pt ? pt.medianPsf : null }),
-      borderColor: PALETTE[i % PALETTE.length],
-      borderWidth: 2, pointRadius: 3, tension: 0.35, spanGaps: true,
+      borderColor: PALETTE[i % PALETTE.length], borderWidth: 2, pointRadius: 3, tension: 0.35, spanGaps: true,
     }))
     if (chartRef.current) chartRef.current.destroy()
     chartRef.current = new window.Chart(canvas.getContext('2d')!, {
@@ -46,7 +46,7 @@ function TrendChart({ trends, area, rooms }: { trends: AreaTrend[]; area: string
       data: { labels: allMonths, datasets },
       options: { responsive: true, maintainAspectRatio: false,
         plugins: { legend: { position: 'bottom' } },
-        scales: { y: { ticks: { callback: (v: unknown) => `${Number(v).toLocaleString()}` } } }
+        scales: { y: { ticks: { callback: (v: unknown) => String(Number(v).toLocaleString()) } } }
       }
     })
     return () => { chartRef.current?.destroy() }
@@ -88,18 +88,24 @@ export default function MarketPage() {
 
   const displayed = trends.filter(t => (!filterArea || t.area === filterArea) && (!filterRooms || t.rooms === filterRooms))
   const fltSt = { background: 'var(--surf)', border: '1px solid var(--line2)', color: 'var(--ink)', padding: '5px 10px', borderRadius: 6, fontSize: 12 } as const
+  const isJa = locale === 'ja'
 
   return (
     <>
-      <Head><title>Dubai Deals - Trends</title><meta name="viewport" content="width=device-width,initial-scale=1"/></Head>
-      <style>{`*{box-sizing:border-box;margin:0;padding:0}:root{--ink:#1A1612;--ink3:#8A8480;--line:#E2DED8;--line2:#CCC8C2;--bg:#FAF8F5;--surf:#FFF;--surf2:#F5F2EE;--teal:#0F6E56;--serif:'Fraunces',serif;--sans:'DM Sans',sans-serif}body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5}`}</style>
-      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=Fraunces:ital,wght@0,300;1,300&display=swap"/>
+      <Head>
+        <title>Dubai Deals - {isJa ? 'エリア市場トレンド' : 'Area Market Trends'}</title>
+        <meta name="viewport" content="width=device-width,initial-scale=1"/>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=Fraunces:ital,wght@0,300;1,300&display=swap"/>
+      </Head>
+      <style dangerouslySetInnerHTML={{ __html: '*{box-sizing:border-box;margin:0;padding:0}:root{--ink:#1A1612;--ink3:#8A8480;--line:#E2DED8;--line2:#CCC8C2;--bg:#FAF8F5;--surf:#FFF;--surf2:#F5F2EE;--teal:#0F6E56;--serif:"Fraunces",serif;--sans:"DM Sans",sans-serif}body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5}' }} />
       <header style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--line)', background: 'var(--surf)', display: 'flex', alignItems: 'center', gap: '1rem' }}>
         <Link href="/" style={{ fontFamily: 'var(--serif)', fontSize: '1.25rem', fontWeight: 300, color: 'var(--ink)', textDecoration: 'none' }}>
           Dubai <em style={{ fontWeight: 500 }}>Deals</em>
         </Link>
-        <span style={{ color: 'var(--line2)' }}>{">"}/span>
-        <span style={{ fontFamily: 'var(--serif)', fontWeight: 300, color: 'var(--ink3)' }}>{locale === 'ja' ? '\u30a8\u30ea\u30a2\u5e02\u5834\u30c8\u30ec\u30f3\u30c9' : 'Area Market Trends'}</span>
+        <span style={{ color: 'var(--line2)' }}>{'>'}</span>
+        <span style={{ fontFamily: 'var(--serif)', fontWeight: 300, color: 'var(--ink3)' }}>
+          {isJa ? 'エリア市場トレンド' : 'Area Market Trends'}
+        </span>
       </header>
       <div style={{ background: 'var(--surf)', padding: '.7rem 1.5rem', borderBottom: '1px solid var(--line)', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
         <select value={filterArea} onChange={e => setFilterArea(e.target.value)} style={fltSt}>
@@ -108,7 +114,10 @@ export default function MarketPage() {
         </select>
         <div style={{ display: 'flex', border: '1px solid var(--line2)', borderRadius: 6, overflow: 'hidden' }}>
           {ROOMS_LIST.map(r => (
-            <button key={r} onClick={() => { setFilterRooms(r); setChartArea('') }} style={{ padding: '5px 12px', fontSize: 12, border: 'none', cursor: 'pointer', background: filterRooms === r ? 'var(--surf2)' : 'transparent', fontWeight: filterRooms === r ? 500 : 400 }}>{r}</button>
+            <button key={r} onClick={() => { setFilterRooms(r); setChartArea('') }}
+              style={{ padding: '5px 12px', fontSize: 12, border: 'none', cursor: 'pointer',
+                background: filterRooms === r ? 'var(--surf2)' : 'transparent',
+                fontWeight: filterRooms === r ? 500 : 400 }}>{r}</button>
           ))}
         </div>
         <button onClick={() => load()} style={{ ...fltSt, cursor: 'pointer' }}>{tx.refresh}</button>
@@ -126,13 +135,14 @@ export default function MarketPage() {
               <TrendChart trends={trends} area={chartArea} rooms={filterRooms} />
             ) : (
               <div style={{ height: 320, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink3)', fontSize: 13 }}>
-                {locale === 'ja' ? '\u30b0\u30e9\u30d5\u3092\u8aad\u307f\u8fbc\u307f\u4e2d...' : 'Loading chart...'}
+                {isJa ? 'グラフを読み込み中...' : 'Loading chart...'}
               </div>
             )}
           </section>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(260px,1fr))', gap: 1, background: 'var(--line)' }}>
             {displayed.map(t => (
-              <div key={`${t.area}:${t.rooms}`} style={{ background: 'var(--surf)', padding: '1rem 1.1rem', cursor: 'pointer' }} onClick={() => setChartArea(t.area)}>
+              <div key={t.area + ':' + t.rooms} style={{ background: 'var(--surf)', padding: '1rem 1.1rem', cursor: 'pointer' }}
+                onClick={() => setChartArea(t.area)}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                   <div>
                     <div style={{ fontFamily: 'var(--serif)', fontWeight: 300, fontSize: '.9rem' }}>{t.area}</div>
@@ -151,7 +161,8 @@ export default function MarketPage() {
         </div>
       )}
       <footer style={{ padding: '1rem', textAlign: 'center', fontSize: 11, color: 'var(--ink3)' }}>
-        <p>{tx.dldNote}</p><p style={{ marginTop: 4 }}>{tx.disclaimer}</p>
+        <p>{tx.dldNote}</p>
+        <p style={{ marginTop: 4 }}>{tx.disclaimer}</p>
       </footer>
     </>
   )
