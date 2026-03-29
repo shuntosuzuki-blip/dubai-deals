@@ -1,5 +1,7 @@
 // lib/bayut.ts
-// Bayut listing data via Algolia search (same backend Bayut.com uses)
+// Bayut14 API via RapidAPI (happyendpoint/bayut14)
+// Host: bayut14.p.rapidapi.com
+// Endpoint: /search-property
 
 export interface BayutListing {
   id: string; title: string; url: string; area: string; rooms: string; beds: number
@@ -7,82 +9,81 @@ export interface BayutListing {
   source: 'Bayut'; imageUrl: string; agentName: string; permitNumber: string
 }
 
-const ALGOLIA_APP = 'LL8IZ711CS'
-const ALGOLIA_KEY = 'strat_a5e4568c'
-const ALGOLIA_INDEX = 'bayut-production-ads-bi-score-ranking-en'
-const ALGOLIA_URL = 'https://LL8IZ711CS-dsn.algolia.net/1/indexes/' + ALGOLIA_INDEX + '/query'
-
-// Area filter IDs for Bayut Algolia
-const AREA_FILTERS = [
-  'location.externalIDs:5002',  // Downtown Dubai
-  'location.externalIDs:5001',  // Dubai Marina
-  'location.externalIDs:11764', // JVC
-  'location.externalIDs:6020',  // Business Bay
-  'location.externalIDs:5006',  // DIFC
-].join(' OR ')
+const HOST = 'bayut14.p.rapidapi.com'
+const BASE = 'https://' + HOST
 
 function parseRooms(beds: number): string {
   return beds === 0 ? 'Studio' : beds + 'BR'
 }
 
-async function algoliaSearch(filters: string, page = 0): Promise<BayutListing[]> {
-  const body = {
-    query: '',
-    filters: `purpose:"for-sale" AND category.externalID:4 AND (${filters})`,
-    hitsPerPage: 50,
-    page,
-    attributesToRetrieve: [
-      'externalID','title','price','rooms','area','coverPhoto','slug',
-      'location','size','agency','permitNumber','baths',
-    ],
-  }
-  const res = await fetch(ALGOLIA_URL, {
-    method: 'POST',
+async function searchProperties(params: Record<string, string>, key: string): Promise<BayutListing[]> {
+  const url = new URL(BASE + '/search-property')
+  Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v))
+  const res = await fetch(url.toString(), {
     headers: {
-      'X-Algolia-Application-Id': ALGOLIA_APP,
-      'X-Algolia-API-Key': ALGOLIA_KEY,
+      'x-rapidapi-key': key,
+      'x-rapidapi-host': HOST,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(10000),
+    signal: AbortSignal.timeout(12000),
   })
-  if (!res.ok) throw new Error('Algolia ' + res.status + ': ' + await res.text())
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error('Bayut14 ' + res.status + ': ' + text.slice(0, 100))
+  }
   const json = await res.json()
-  if (json.message) throw new Error('Algolia error: ' + json.message)
-
+  // Handle different response shapes
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (json.hits ?? []).map((h: any) => {
-    const beds = Number(h.rooms ?? 0)
-    const sizeSqm = Number(h.size ?? 0)
-    const sizeSqft = Math.round(sizeSqm * 10.764)
-    const price = Number(h.price ?? 0)
-    const areaName = h.location?.find((l: {level: number; name: string}) => l.level === 3)?.name
-      ?? h.location?.[h.location.length - 1]?.name ?? 'Dubai'
-    const cover = h.coverPhoto as {url?: string; thumbnail?: string} | undefined
-    const imageUrl = cover?.url ?? cover?.thumbnail ?? ''
-    const slug = String(h.slug ?? h.externalID ?? '')
+  const hits: any[] = json?.data ?? json?.results ?? json?.properties ?? json?.hits ?? []
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return hits.map((h: any) => {
+    const beds = Number(h.rooms ?? h.beds ?? h.bedrooms ?? 0)
+    const sizeSqm = Number(h.area ?? h.size ?? h.areaSize ?? 0)
+    const sizeSqft = sizeSqm > 500 ? sizeSqm : Math.round(sizeSqm * 10.764) // if already sqft, keep
+    const price = Number(h.price ?? h.priceAED ?? h.askingPrice ?? 0)
+    // Get image
+    const cover = h.coverPhoto ?? h.mainImage ?? h.photo ?? h.images?.[0]
+    const imageUrl = typeof cover === 'string' ? cover : (cover?.url ?? cover?.thumbnail ?? '')
+    // Get area name
+    const areaName = h.location?.name ?? h.area?.name ?? h.district ?? h.neighborhood ?? 'Dubai'
+    // Get URL
+    const slug = h.slug ?? h.externalID ?? h.id ?? ''
+    const listingUrl = h.url ?? h.link ?? ('https://www.bayut.com/property/details-' + slug + '.html')
     return {
-      id: String(h.externalID ?? Math.random()),
-      title: String(h.title ?? ''),
-      url: 'https://www.bayut.com/property/details-' + slug + '.html',
+      id: String(h.externalID ?? h.id ?? h._id ?? Math.random()),
+      title: String(h.title ?? h.name ?? ''),
+      url: listingUrl,
       area: areaName,
       rooms: parseRooms(beds),
       beds,
       sizeSqft,
       askPrice: price,
       yieldPct: 0,
-      domDays: 0,
-      view: '',
+      domDays: Number(h.daysListed ?? h.daysOnMarket ?? 0),
+      view: String(h.view ?? ''),
       source: 'Bayut' as const,
       imageUrl,
-      agentName: String((h.agency as {name?: string})?.name ?? ''),
-      permitNumber: String(h.permitNumber ?? ''),
+      agentName: String(h.agent?.name ?? h.contactName ?? ''),
+      permitNumber: String(h.permitNumber ?? h.permit ?? ''),
     }
-  }).filter((l: BayutListing) => l.askPrice > 100000 && l.sizeSqft > 100)
+  }).filter((l: BayutListing) => l.askPrice > 100000 && l.title.length > 0)
 }
 
 export async function fetchBayutListings(opts: { rapidApiKey: string; pageSize?: number }): Promise<BayutListing[]> {
-  const listings = await algoliaSearch(AREA_FILTERS, 0)
-  if (listings.length === 0) throw new Error('No listings from Algolia')
-  return listings.slice(0, opts.pageSize ?? 100)
+  const { rapidApiKey, pageSize = 100 } = opts
+
+  // Search for-sale properties in Dubai
+  const params: Record<string, string> = {
+    purpose: 'for-sale',
+    locationExternalIDs: '5002,5001,11764,6020,5006', // Downtown, Marina, JVC, Business Bay, DIFC
+    lang: 'en',
+    hitsPerPage: String(Math.min(pageSize, 50)),
+    page: '0',
+    sort: 'date_desc',
+    categoryExternalID: '4', // apartments
+  }
+
+  const listings = await searchProperties(params, rapidApiKey)
+  if (listings.length === 0) throw new Error('No listings returned from Bayut14 API')
+  return listings.slice(0, pageSize)
 }
