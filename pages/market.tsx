@@ -98,7 +98,7 @@ export default function MarketPage() {
         <Link href="/" style={{ fontFamily: 'var(--serif)', fontSize: '1.25rem', fontWeight: 300, color: 'var(--ink)', textDecoration: 'none' }}>
           Dubai <em style={{ fontWeight: 500 }}>Deals</em>
         </Link>
-        <span style={{ color: 'var(--line2)' }}>\u203a</span>
+        <span style={{ color: 'var(--line2)' }}>{">"}/span>
         <span style={{ fontFamily: 'var(--serif)', fontWeight: 300, color: 'var(--ink3)' }}>{locale === 'ja' ? '\u30a8\u30ea\u30a2\u5e02\u5834\u30c8\u30ec\u30f3\u30c9' : 'Area Market Trends'}</span>
       </header>
       <div style={{ background: 'var(--surf)', padding: '.7rem 1.5rem', borderBottom: '1px solid var(--line)', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
