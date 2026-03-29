@@ -98,8 +98,8 @@ export default function MarketPage() {
         <Link href="/" style={{ fontFamily: 'var(--serif)', fontSize: '1.25rem', fontWeight: 300, color: 'var(--ink)', textDecoration: 'none' }}>
           Dubai <em style={{ fontWeight: 500 }}>Deals</em>
         </Link>
-        <span style={{ color: 'var(--line2)' }}>›</span>
-        <span style={{ fontFamily: 'var(--serif)', fontWeight: 300, color: 'var(--ink3)' }}>{locale === 'ja' ? 'エリア市場トレンド' : 'Area Market Trends'}</span>
+        <span style={{ color: 'var(--line2)' }}>\u203a</span>
+        <span style={{ fontFamily: 'var(--serif)', fontWeight: 300, color: 'var(--ink3)' }}>{locale === 'ja' ? '\u30a8\u30ea\u30a2\u5e02\u5834\u30c8\u30ec\u30f3\u30c9' : 'Area Market Trends'}</span>
       </header>
       <div style={{ background: 'var(--surf)', padding: '.7rem 1.5rem', borderBottom: '1px solid var(--line)', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
         <select value={filterArea} onChange={e => setFilterArea(e.target.value)} style={fltSt}>
@@ -126,7 +126,7 @@ export default function MarketPage() {
               <TrendChart trends={trends} area={chartArea} rooms={filterRooms} />
             ) : (
               <div style={{ height: 320, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink3)', fontSize: 13 }}>
-                {locale === 'ja' ? 'グラフを読み込み中...' : 'Loading chart...'}
+                {locale === 'ja' ? '\u30b0\u30e9\u30d5\u3092\u8aad\u307f\u8fbc\u307f\u4e2d...' : 'Loading chart...'}
               </div>
             )}
           </section>
